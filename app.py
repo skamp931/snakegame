@@ -131,6 +131,12 @@ def get_random_word():
 
 # ゲームの状態をセッションステートに保存（初回ロード時またはリセット時）
 # すべてのセッションステート変数をここで初期化することで、AttributeErrorを防ぐ
+# difficultyとgame_speedはselect_boxより前に確実に初期化されるようにする
+if 'difficulty' not in st.session_state:
+    st.session_state.difficulty = "普通" # デフォルトの難易度設定
+if 'game_speed' not in st.session_state:
+    st.session_state.game_speed = DIFFICULTY_SPEEDS[st.session_state.difficulty] # 難易度に応じたゲーム速度
+
 if 'game_started' not in st.session_state:
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
     # 果物の配置をボードの内側（外周1マスを避ける）に制限
@@ -142,8 +148,7 @@ if 'game_started' not in st.session_state:
     st.session_state.current_word_japanese, st.session_state.current_word_romaji = get_random_word() # 初期単語
     st.session_state.game_started = False # ゲームが開始されたかどうかのフラグ
     st.session_state.initial_countdown_done = False # 初回カウントダウンが完了したかどうかのフラグ
-    st.session_state.difficulty = "普通" # デフォルトの難易度設定
-    st.session_state.game_speed = DIFFICULTY_SPEEDS[st.session_state.difficulty] # 難易度に応じたゲーム速度
+
 
 def initialize_game_state():
     """ゲームの状態を初期化する関数"""
@@ -231,6 +236,7 @@ board_placeholder = st.empty()
 countdown_placeholder = st.empty() # カウントダウン表示用
 
 # 難易度設定
+# difficultyが確実に初期化された後にアクセスするように修正
 selected_difficulty = st.selectbox(
     "難易度を選択してください:",
     options=list(DIFFICULTY_SPEEDS.keys()),
