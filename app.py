@@ -1,17 +1,61 @@
 import streamlit as st
 import random
 import time
+import streamlit.components.v1 as components
 
 # ゲーム設定
 BOARD_SIZE = 20
 INITIAL_SNAKE_LENGTH = 3
 GAME_SPEED = 0.2  # 秒
 
-# ゲームの状態をセッションステートに保存
+# HTML/JS for keyboard input
+# This script listens for arrow key presses and sends the corresponding direction
+# to Streamlit using `Streamlit.setComponentValue()`.
+# It uses an invisible div to ensure the component exists but doesn't take up space.
+keyboard_input_html = """
+<script>
+    const directionsMap = {
+        'ArrowUp': 'up',
+        'ArrowDown': 'down',
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right'
+    };
+
+    document.addEventListener('keydown', function(event) {
+        const newDirection = directionsMap[event.key];
+        if (newDirection) {
+            // Prevent default scroll behavior for arrow keys
+            event.preventDefault();
+            // Send the new direction value to Streamlit
+            if (window.parent.Streamlit) {
+                window.parent.Streamlit.setComponentValue(newDirection);
+            }
+        }
+    });
+
+    // Send an initial null value to ensure the component is rendered and ready.
+    // This will trigger a rerun when the app first loads, but it's generally fine.
+    if (window.parent.Streamlit) {
+        window.parent.Streamlit.setComponentValue(null);
+    }
+</script>
+<div style="width: 0; height: 0; overflow: hidden; position: absolute;"></div>
+"""
+
+st.set_page_config(layout="centered")
+
+st.title("🐍 Streamlit スネークゲーム 🍎")
+
+# Embed the keyboard input component.
+# This will return the last value sent by `setComponentValue` from JS.
+# If no key is pressed, it will be `None` (from the initial `setComponentValue(null)`).
+last_key_input = components.html(keyboard_input_html, height=0, width=0, scrolling=False, key="keyboard_listener")
+
+# ゲームの状態をセッションステートに保存（初回ロード時またはリセット時）
 if 'snake' not in st.session_state:
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
     st.session_state.food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
-    st.session_state.direction = 'left' # 初期方向
+    st.session_state.direction = 'left' # 初期方向をデフォルトで設定
     st.session_state.score = 0
     st.session_state.game_over = False
 
@@ -19,9 +63,23 @@ def initialize_game_state():
     """ゲームの状態を初期化する関数"""
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
     st.session_state.food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
-    st.session_state.direction = 'left'
+    st.session_state.direction = 'left' # 初期方向をデフォルトで設定
     st.session_state.score = 0
     st.session_state.game_over = False
+
+# キーボード入力に基づいて方向を更新
+if last_key_input: # キーが実際に押された場合のみ更新（最初のnullではない）
+    current_direction = st.session_state.direction # 現在の方向を取得
+
+    # 方向ロジックを適用: 直前の逆方向には変更できない
+    if last_key_input == 'up' and current_direction != 'down':
+        st.session_state.direction = 'up'
+    elif last_key_input == 'down' and current_direction != 'up':
+        st.session_state.direction = 'down'
+    elif last_key_input == 'left' and current_direction != 'right':
+        st.session_state.direction = 'left'
+    elif last_key_input == 'right' and current_direction != 'left':
+        st.session_state.direction = 'right'
 
 def create_board_display(snake, food, board_size):
     """ゲームボードを文字列で表現して表示する"""
@@ -57,6 +115,7 @@ def move_snake(snake, direction, food, board_size):
     elif direction == 'down':
         new_head = (head_x + 1, head_y)
     elif direction == 'left':
+        new_head = (head_y - 1, head_x) # 修正: xとyが逆だったため修正
         new_head = (head_x, head_y - 1)
     elif direction == 'right':
         new_head = (head_x, head_y + 1)
@@ -79,10 +138,6 @@ def move_snake(snake, direction, food, board_size):
 
     return new_snake, eats_food
 
-st.set_page_config(layout="centered")
-
-st.title("🐍 Streamlit スネークゲーム 🍎")
-
 # スコアとゲームオーバーメッセージのプレースホルダー
 score_placeholder = st.empty()
 game_over_placeholder = st.empty()
@@ -95,31 +150,13 @@ if st.session_state.game_over:
         initialize_game_state()
         st.rerun() # ゲームをリスタートするために再実行
 
-# 方向ボタンのレイアウト
-col1, col2, col3 = st.columns([1,1,1])
-
-with col2:
-    if st.button("⬆️", key="up"):
-        if st.session_state.direction != 'down': # 逆方向への即時転換を防ぐ
-            st.session_state.direction = 'up'
-with col1:
-    if st.button("⬅️", key="left"):
-        if st.session_state.direction != 'right':
-            st.session_state.direction = 'left'
-with col3:
-    if st.button("➡️", key="right"):
-        if st.session_state.direction != 'left':
-            st.session_state.direction = 'right'
-with col2:
-    if st.button("⬇️", key="down"):
-        if st.session_state.direction != 'up':
-            st.session_state.direction = 'down'
+# 方向ボタンは削除されました
 
 # ゲームループ
 if not st.session_state.game_over:
     score_placeholder.write(f"スコア: {st.session_state.score}")
 
-    # ヘビの移動
+    # ヘビの移動 (st.session_state.direction はキーボード入力によって更新される)
     st.session_state.snake, eats_food = move_snake(st.session_state.snake, st.session_state.direction, st.session_state.food, BOARD_SIZE)
 
     if eats_food:
