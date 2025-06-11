@@ -211,6 +211,7 @@ score_placeholder = st.empty()
 game_over_placeholder = st.empty()
 word_display_placeholder = st.empty() # 単語表示用
 input_feedback_placeholder = st.empty() # 入力フィードバック用
+input_box_placeholder = st.empty() # 入力ボックス用
 board_placeholder = st.empty()
 countdown_placeholder = st.empty() # カウントダウン表示用
 
@@ -221,26 +222,11 @@ if st.session_state.game_over:
         initialize_game_state()
         st.rerun() # ゲームをリスタートするために再実行
 
-# --- 初回ボード表示とカウントダウン ---
-# ゲームボードの初期表示 (ゲームが開始されていなくても表示)
-board_display_html = create_board_display(st.session_state.snake, st.session_state.food, BOARD_SIZE)
-board_placeholder.markdown(board_display_html, unsafe_allow_html=True)
-
-# ゲーム開始前の5秒待機 (ボードが表示された後)
-if not st.session_state.game_started and not st.session_state.game_over and not st.session_state.initial_countdown_done:
-    for i in range(INITIAL_WAIT_SECONDS, 0, -1):
-        countdown_placeholder.markdown(f"<h2 style='text-align: center; color: #4CAF50;'>ゲーム開始まで: {i}秒</h2>", unsafe_allow_html=True)
-        time.sleep(1)
-    countdown_placeholder.empty() # カウントダウン表示をクリア
-    st.session_state.game_started = True
-    st.session_state.initial_countdown_done = True # カウントダウンが完了したことをマーク
-    st.rerun() # ゲーム本編を開始するために再実行
-
-# メインゲームループ (ゲームが開始されており、かつゲームオーバーでない場合のみ実行)
-if st.session_state.game_started and not st.session_state.game_over:
+# --- 常に表示されるUI要素 (ゲームオーバー時以外) ---
+if not st.session_state.game_over:
     score_placeholder.write(f"スコア: {st.session_state.score}")
 
-    # ローマ字単語の表示と入力フィールドの配置
+    # ローマ字単語の表示
     word_display_placeholder.markdown(
         f"次の単語をローマ字で入力し、Enterキーを押して方向を変えてください: <br>"
         f"**日本語:** {st.session_state.current_word_japanese} <br>"
@@ -249,8 +235,35 @@ if st.session_state.game_started and not st.session_state.game_over:
     )
 
     # テキスト入力フィールド (ローマ字の下に表示)
-    user_input_romaji = st.text_input("ローマ字入力:", key=f"romaji_input_{st.session_state.word_input_key}", label_visibility="collapsed") # ラベルを非表示にしてスッキリさせる
+    # ゲーム開始前は無効化しておく
+    # input_box_placeholderを使用して、input_text_romajiが常にその位置に描画されるようにする
+    with input_box_placeholder:
+        user_input_romaji = st.text_input(
+            "ローマ字入力:",
+            key=f"romaji_input_{st.session_state.word_input_key}",
+            label_visibility="collapsed",
+            disabled=not st.session_state.game_started and not st.session_state.initial_countdown_done # カウントダウン中は無効
+        )
+    
+    # ゲームボードの初期表示 (常に表示)
+    board_display_html = create_board_display(st.session_state.snake, st.session_state.food, BOARD_SIZE)
+    board_placeholder.markdown(board_display_html, unsafe_allow_html=True)
 
+
+# --- ゲーム開始前の5秒待機 ---
+if not st.session_state.game_started and not st.session_state.game_over and not st.session_state.initial_countdown_done:
+    # ローマ字入力ボックスとボードが表示されてからカウントダウンを開始
+    for i in range(INITIAL_WAIT_SECONDS, 0, -1):
+        countdown_placeholder.markdown(f"<h2 style='text-align: center; color: #4CAF50;'>ゲーム開始まで: {i}秒</h2>", unsafe_allow_html=True)
+        time.sleep(1)
+    countdown_placeholder.empty() # カウントダウン表示をクリア
+    st.session_state.game_started = True
+    st.session_state.initial_countdown_done = True # カウントダウンが完了したことをマーク
+    st.rerun() # ゲーム本編を開始するために再実行
+
+
+# メインゲームループ (ゲームが開始されており、かつゲームオーバーでない場合のみ実行)
+if st.session_state.game_started and not st.session_state.game_over:
     # ユーザー入力が正しいかチェック
     if user_input_romaji: # 入力があった場合のみ処理
         if user_input_romaji.lower() == st.session_state.current_word_romaji.lower():
