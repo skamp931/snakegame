@@ -5,8 +5,15 @@ import time
 # ゲーム設定
 BOARD_SIZE = 20
 INITIAL_SNAKE_LENGTH = 3
-GAME_SPEED = 0.8  # 秒 (単語入力に合わせて遅くする)
 INITIAL_WAIT_SECONDS = 5 # ゲーム開始前の待機時間
+
+# 難易度ごとのゲーム速度設定 (秒)
+DIFFICULTY_SPEEDS = {
+    "簡単": 1.0,   # Slowest
+    "普通": 0.8,   # Normal (default previously)
+    "難しい": 0.5, # Faster
+    "鬼ムズ": 0.3  # Fastest
+}
 
 # 日本語とローマ字の単語リスト
 japanese_words_romaji = {
@@ -123,9 +130,11 @@ def get_random_word():
     return japanese_word, romaji_word
 
 # ゲームの状態をセッションステートに保存（初回ロード時またはリセット時）
+# すべてのセッションステート変数をここで初期化することで、AttributeErrorを防ぐ
 if 'game_started' not in st.session_state:
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
-    st.session_state.food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
+    # 果物の配置をボードの内側（外周1マスを避ける）に制限
+    st.session_state.food = (random.randint(1, BOARD_SIZE - 2), random.randint(1, BOARD_SIZE - 2))
     st.session_state.direction = 'left' # 初期方向をデフォルトで設定
     st.session_state.score = 0
     st.session_state.game_over = False
@@ -133,11 +142,14 @@ if 'game_started' not in st.session_state:
     st.session_state.current_word_japanese, st.session_state.current_word_romaji = get_random_word() # 初期単語
     st.session_state.game_started = False # ゲームが開始されたかどうかのフラグ
     st.session_state.initial_countdown_done = False # 初回カウントダウンが完了したかどうかのフラグ
+    st.session_state.difficulty = "普通" # デフォルトの難易度設定
+    st.session_state.game_speed = DIFFICULTY_SPEEDS[st.session_state.difficulty] # 難易度に応じたゲーム速度
 
 def initialize_game_state():
     """ゲームの状態を初期化する関数"""
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
-    st.session_state.food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
+    # 果物の配置をボードの内側（外周1マスを避ける）に制限
+    st.session_state.food = (random.randint(1, BOARD_SIZE - 2), random.randint(1, BOARD_SIZE - 2))
     st.session_state.direction = 'left' # 初期方向をデフォルトで設定
     st.session_state.score = 0
     st.session_state.game_over = False
@@ -145,6 +157,8 @@ def initialize_game_state():
     st.session_state.current_word_japanese, st.session_state.current_word_romaji = get_random_word() # 新しい単語
     st.session_state.game_started = False # ゲームをリスタートする際もフラグをリセット
     st.session_state.initial_countdown_done = False # カウントダウンもリセット
+    # 難易度とゲーム速度はリセット時に保持
+    st.session_state.game_speed = DIFFICULTY_SPEEDS[st.session_state.difficulty]
 
 def create_board_display(snake, food, board_size):
     """ゲームボードを文字列で表現して表示する"""
@@ -212,8 +226,23 @@ game_over_placeholder = st.empty()
 word_display_placeholder = st.empty() # 単語表示用
 input_feedback_placeholder = st.empty() # 入力フィードバック用
 input_box_placeholder = st.empty() # 入力ボックス用
+tab_key_hint_placeholder = st.empty() # Tabキーヒント用
 board_placeholder = st.empty()
 countdown_placeholder = st.empty() # カウントダウン表示用
+
+# 難易度設定
+selected_difficulty = st.selectbox(
+    "難易度を選択してください:",
+    options=list(DIFFICULTY_SPEEDS.keys()),
+    index=list(DIFFICULTY_SPEEDS.keys()).index(st.session_state.difficulty),
+    key="difficulty_selector"
+)
+# 難易度が変更されたらセッションステートとゲーム速度を更新
+if selected_difficulty != st.session_state.difficulty:
+    st.session_state.difficulty = selected_difficulty
+    st.session_state.game_speed = DIFFICULTY_SPEEDS[selected_difficulty]
+    # 難易度変更時にゲームを初期化するかどうかは要検討 (ここでは初期化しない)
+    # st.rerun() # 必要に応じて難易度変更時にページを再実行
 
 # ゲームオーバー時の表示
 if st.session_state.game_over:
@@ -243,6 +272,9 @@ if not st.session_state.game_over:
             label_visibility="collapsed"
         )
     
+    # Tabキーヒントの表示
+    tab_key_hint_placeholder.info("ヒント：Tabキーで入力ボックスを選択できます。")
+
     # ゲームボードの初期表示 (常に表示)
     board_display_html = create_board_display(st.session_state.snake, st.session_state.food, BOARD_SIZE)
     board_placeholder.markdown(board_display_html, unsafe_allow_html=True)
@@ -263,7 +295,6 @@ if not st.session_state.game_started and not st.session_state.game_over and not 
 # メインゲームループ (ゲームが開始されており、かつゲームオーバーでない場合のみ実行)
 if st.session_state.game_started and not st.session_state.game_over:
     # ユーザー入力が正しいかチェック
-    # user_input_romajiは毎回再取得されるため、直前の入力値が保持される
     if user_input_romaji: # 入力があった場合のみ処理
         if user_input_romaji.lower() == st.session_state.current_word_romaji.lower():
             input_feedback_placeholder.success("正解！新しい方向を選択中...")
@@ -310,24 +341,23 @@ if st.session_state.game_started and not st.session_state.game_over:
             # 不正解の場合、入力ボックスをクリアしない（ユーザーが修正できるように）
 
     # ヘビの移動
-    # ゲームが開始されている場合のみ移動させる
     st.session_state.snake, eats_food = move_snake(st.session_state.snake, st.session_state.direction, st.session_state.food, BOARD_SIZE)
 
     if eats_food:
         st.session_state.score += 1
         # 新しい食べ物を生成 (ヘビの体と重ならないように)
+        # 果物の配置をボードの内側（外周1マスを避ける）に制限
         while True:
-            new_food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
+            new_food = (random.randint(1, BOARD_SIZE - 2), random.randint(1, BOARD_SIZE - 2))
             if new_food not in st.session_state.snake:
                 st.session_state.food = new_food
                 break
-        # 食べ物を食べた際に単語を変更しない
-        # input_feedback_placeholder.empty() # フィードバックをクリアする必要がある場合はここに追加
+        # 食べ物を食べた際に単語を変更しない (ユーザーの要望による変更)
 
     # ゲームボードの表示を更新 (ループ内で継続的に更新)
     board_display_html = create_board_display(st.session_state.snake, st.session_state.food, BOARD_SIZE)
     board_placeholder.markdown(board_display_html, unsafe_allow_html=True)
 
     # 一定時間待機してから再実行 (ゲームの速度を制御)
-    time.sleep(GAME_SPEED)
+    time.sleep(st.session_state.game_speed) # 難易度に応じた速度を使用
     st.rerun() # ページ全体を再実行して更新
