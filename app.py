@@ -123,7 +123,8 @@ def get_random_word():
     return japanese_word, romaji_word
 
 # ゲームの状態をセッションステートに保存（初回ロード時またはリセット時）
-if 'snake' not in st.session_state:
+# game_started が存在しない場合に全ての状態を初期化するように変更
+if 'game_started' not in st.session_state:
     st.session_state.snake = [(BOARD_SIZE // 2, BOARD_SIZE // 2 + i) for i in range(INITIAL_SNAKE_LENGTH)]
     st.session_state.food = (random.randint(0, BOARD_SIZE - 1), random.randint(0, BOARD_SIZE - 1))
     st.session_state.direction = 'left' # 初期方向をデフォルトで設定
@@ -220,6 +221,7 @@ if st.session_state.game_over:
         st.rerun() # ゲームをリスタートするために再実行
 
 # ゲーム開始前の5秒待機
+# game_started のチェックを最初にすることで、未初期化エラーを防ぐ
 if not st.session_state.game_started and not st.session_state.game_over:
     for i in range(INITIAL_WAIT_SECONDS, 0, -1):
         countdown_placeholder.markdown(f"<h2 style='text-align: center; color: #4CAF50;'>ゲーム開始まで: {i}秒</h2>", unsafe_allow_html=True)
