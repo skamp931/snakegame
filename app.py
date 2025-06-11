@@ -88,10 +88,12 @@ score_placeholder = st.empty()
 game_over_placeholder = st.empty()
 board_placeholder = st.empty()
 
-# キーボードコマンド用のテキスト入力フィールド
-# ユーザーは 'w', 'a', 's', 'd' を入力し、Enterキーを押す必要があります。
-st.write("キーボードで方向を入力してください (w:上, s:下, a:左, d:右) そしてEnterを押してください。")
-direction_input = st.text_input("次の移動方向:", max_chars=1, key="direction_input")
+# スライダーで方向を制御
+# 'up': -1, 'neutral': 0, 'down': 1
+st.write("スライダーを動かしてヘビの方向を操作してください。")
+vertical_val = st.slider("縦方向 (上: -1, 停止: 0, 下: 1)", -1, 1, 0, key="vertical_slider")
+# 'left': -1, 'neutral': 0, 'right': 1
+horizontal_val = st.slider("横方向 (左: -1, 停止: 0, 右: 1)", -1, 1, 0, key="horizontal_slider")
 
 # ゲームオーバー時の表示
 if st.session_state.game_over:
@@ -100,19 +102,32 @@ if st.session_state.game_over:
         initialize_game_state()
         st.rerun() # ゲームをリスタートするために再実行
 
-# 方向の更新ロジック (テキスト入力から)
-# 新しい方向が入力され、それが有効なキーである場合のみ更新
-if direction_input:
-    current_direction = st.session_state.direction
-    new_input_direction = direction_input.lower()
+# 方向の更新ロジック (スライダーから)
+current_direction = st.session_state.direction
+new_proposed_direction = None
 
-    if new_input_direction == 'w' and current_direction != 'down':
+# 縦方向のスライダーが0以外の場合、優先的に方向を決定
+if vertical_val != 0:
+    if vertical_val == -1:
+        new_proposed_direction = 'up'
+    else: # vertical_val == 1
+        new_proposed_direction = 'down'
+# 縦方向スライダーが0で、横方向スライダーが0以外の場合
+elif horizontal_val != 0:
+    if horizontal_val == -1:
+        new_proposed_direction = 'left'
+    else: # horizontal_val == 1
+        new_proposed_direction = 'right'
+
+# 提案された新しい方向が有効であり、かつ現在の逆方向でない場合のみ更新
+if new_proposed_direction:
+    if new_proposed_direction == 'up' and current_direction != 'down':
         st.session_state.direction = 'up'
-    elif new_input_direction == 's' and current_direction != 'up':
+    elif new_proposed_direction == 'down' and current_direction != 'up':
         st.session_state.direction = 'down'
-    elif new_input_direction == 'a' and current_direction != 'right':
+    elif new_proposed_direction == 'left' and current_direction != 'right':
         st.session_state.direction = 'left'
-    elif new_input_direction == 'd' and current_direction != 'left':
+    elif new_proposed_direction == 'right' and current_direction != 'left':
         st.session_state.direction = 'right'
 
 # ゲームループ
