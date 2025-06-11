@@ -93,7 +93,7 @@ if st.session_state.game_over:
     game_over_placeholder.error(f"ゲームオーバー！あなたのスコア: {st.session_state.score}")
     if st.button("もう一度プレイ"):
         initialize_game_state()
-        st.experimental_rerun() # ゲームをリスタートするために再実行
+        st.rerun() # ゲームをリスタートするために再実行
 
 # 方向ボタンのレイアウト
 col1, col2, col3 = st.columns([1,1,1])
@@ -137,4 +137,4 @@ if not st.session_state.game_over:
 
     # 一定時間待機してから再実行 (ゲームの速度を制御)
     time.sleep(GAME_SPEED)
-    st.experimental_rerun() # ページ全体を再実行して更新
+    st.rerun() # ページ全体を再実行して更新
