@@ -235,14 +235,13 @@ if not st.session_state.game_over:
     )
 
     # テキスト入力フィールド (ローマ字の下に表示)
-    # ゲーム開始前は無効化しておく
     # input_box_placeholderを使用して、input_text_romajiが常にその位置に描画されるようにする
     with input_box_placeholder:
+        # disabled属性を削除し、ゲーム開始前でも入力できるようにする
         user_input_romaji = st.text_input(
             "ローマ字入力:",
             key=f"romaji_input_{st.session_state.word_input_key}",
-            label_visibility="collapsed",
-            disabled=not st.session_state.game_started and not st.session_state.initial_countdown_done # カウントダウン中は無効
+            label_visibility="collapsed"
         )
     
     # ゲームボードの初期表示 (常に表示)
@@ -270,16 +269,35 @@ if st.session_state.game_started and not st.session_state.game_over:
             input_feedback_placeholder.success("正解！新しい方向を選択中...")
 
             current_direction = st.session_state.direction
-            valid_directions = []
+            
+            # 曲がる方向を決定するロジック（ぶつかるまでの距離が長い方）
+            distances = {}
+            head_x, head_y = st.session_state.snake[0]
 
-            # 進行方向と異なる方向、戻りはなしの方向に曲がる
             if current_direction in ['up', 'down']: # 現在が垂直方向の場合、左右に曲がる
-                valid_directions = ['left', 'right']
+                # 左への距離
+                distances['left'] = head_y
+                # 右への距離
+                distances['right'] = BOARD_SIZE - 1 - head_y
             elif current_direction in ['left', 'right']: # 現在が水平方向の場合、上下に曲がる
-                valid_directions = ['up', 'down']
+                # 上への距離
+                distances['up'] = head_x
+                # 下への距離
+                distances['down'] = BOARD_SIZE - 1 - head_x
 
-            if valid_directions:
-                new_direction = random.choice(valid_directions)
+            new_direction = None
+            if distances:
+                max_distance = -1
+                best_directions = []
+                for direction, dist in distances.items():
+                    if dist > max_distance:
+                        max_distance = dist
+                        best_directions = [direction]
+                    elif dist == max_distance:
+                        best_directions.append(direction)
+                
+                # 最長距離の方向が複数ある場合はランダムに選択
+                new_direction = random.choice(best_directions)
                 st.session_state.direction = new_direction
             
             # 新しい単語を生成し、入力フィールドをリセット
@@ -289,8 +307,11 @@ if st.session_state.game_started and not st.session_state.game_over:
             
         else:
             input_feedback_placeholder.warning("不正解です。もう一度試してください。")
+            # 不正解の場合、入力ボックスをクリアしない（ユーザーが修正できるように）
+            # input_box_placeholder.empty() はここには置かない
 
     # ヘビの移動
+    # ゲームが開始されている場合のみ移動させる
     st.session_state.snake, eats_food = move_snake(st.session_state.snake, st.session_state.direction, st.session_state.food, BOARD_SIZE)
 
     if eats_food:
