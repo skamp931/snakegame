@@ -3,7 +3,7 @@ import random
 import time
 
 # ゲーム設定
-BOARD_SIZE = 20
+BOARD_SIZE = 10
 INITIAL_SNAKE_LENGTH = 3
 INITIAL_WAIT_SECONDS = 5 # ゲーム開始前の待機時間
 
