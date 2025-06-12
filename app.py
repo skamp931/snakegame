@@ -3,15 +3,15 @@ import random
 import time
 
 # ゲーム設定
-BOARD_SIZE = 10
+BOARD_SIZE = 12
 INITIAL_SNAKE_LENGTH = 3
 INITIAL_WAIT_SECONDS = 5 # ゲーム開始前の待機時間
 
 # 難易度ごとのゲーム速度設定 (秒)
 DIFFICULTY_SPEEDS = {
-    "簡単": 1.0,   # Slowest
-    "普通": 0.8,   # Normal (default previously)
-    "難しい": 0.5, # Faster
+    "簡単": 2.0,   # Slowest
+    "普通": 1.5,   # Normal (default previously)
+    "難しい": 1.0, # Faster
     "鬼ムズ": 0.3  # Fastest
 }
 
@@ -118,8 +118,8 @@ japanese_words_romaji = {
     "ピンク": "pinku",
     "オレンジ": "orenji",
     "灰色": "haiiro",
-    "金色": "kin'iro",
-    "銀色": "gin'iro",
+    "金色": "kiniro",
+    "銀色": "giniro",
     "透明": "toumei"
 }
 
